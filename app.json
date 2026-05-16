@@ -24,7 +24,8 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.qrshield.pro",
       "versionCode": 1
@@ -45,6 +46,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "2f4a43d8-2ea4-4acf-bbc1-8df961328bc9"
+      }
     }
   }
 }

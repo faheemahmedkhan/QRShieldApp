@@ -5,15 +5,15 @@ import { Colors, FontFamily } from '@/constants/theme';
 
 interface ScoreBarProps {
   label: string;
-  value: number; // 0.0 - 1.0
+  value: number;
   type: 'ml' | 'dl' | 'fusion';
   note?: string;
 }
 
 const BAR_COLORS = {
-  ml: { start: '#3d84ff', end: '#a855f7' },
-  dl: { start: '#fb923c', end: '#f43f5e' },
-  fusion: { start: '#3d84ff', end: '#00f5a0' },
+  ml:     '#a855f7',
+  dl:     '#f43f5e',
+  fusion: '#00f5a0',
 };
 
 export default function ScoreBar({ label, value, type, note }: ScoreBarProps) {
@@ -23,13 +23,12 @@ export default function ScoreBar({ label, value, type, note }: ScoreBarProps) {
     Animated.timing(anim, {
       toValue: value,
       duration: 900,
-      delay: 100,
+      delay: 150,
       useNativeDriver: false,
     }).start();
   }, [value]);
 
   const pct = Math.round(value * 100);
-  const colors = BAR_COLORS[type];
 
   return (
     <View style={styles.container}>
@@ -37,31 +36,27 @@ export default function ScoreBar({ label, value, type, note }: ScoreBarProps) {
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.value}>{pct}%</Text>
       </View>
-
       <View style={styles.track}>
         <Animated.View
           style={[
             styles.fill,
             {
+              backgroundColor: BAR_COLORS[type],
               width: anim.interpolate({
                 inputRange: [0, 1],
                 outputRange: ['0%', '100%'],
               }),
-              backgroundColor: colors.end,
             },
           ]}
         />
       </View>
-
       {note ? <Text style={styles.note}>{note}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-  },
+  container: { marginBottom: 20 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -79,7 +74,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.heading,
     fontSize: 15,
     color: Colors.text,
-    fontWeight: '600',
   },
   track: {
     height: 10,
