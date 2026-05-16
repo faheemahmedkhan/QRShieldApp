@@ -42,6 +42,12 @@
         {
           "cameraPermission": "QRShield needs camera access to scan QR codes for threat analysis."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "QRShield needs access to your gallery to upload QR code images."
+        }
       ]
     ],
     "experiments": {

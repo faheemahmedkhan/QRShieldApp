@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,13 +52,17 @@ export default function ScannerScreen() {
       setHint('⬆ Uploading to AI server…');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.92 });
+      // Small delay ensures camera is stable and ready
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Lower quality and skipProcessing fixes the "Failed to capture" out-of-memory error on some Androids
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!photo?.uri) throw new Error('Failed to capture photo');
 
       const manipulated = await ImageManipulator.manipulateAsync(
         photo.uri,
-        [{ resize: { width: 1280, height: 1280 } }],
-        { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG }
+        [{ resize: { width: 1024, height: 1024 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       const result = await scanQRImage(manipulated.uri);
@@ -76,6 +81,37 @@ export default function ScannerScreen() {
     if (isProcessing.current) return;
     setScanState('idle');
     setHint('Point camera at a QR code');
+    isProcessing.current = false;
+  };
+
+  const handleGallery = async () => {
+    if (isProcessing.current) return;
+    try {
+      isProcessing.current = true;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets && result.assets[0].uri) {
+        setScanState('uploading');
+        setHint('⬆ Uploading from gallery…');
+        const manipulated = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 1024, height: 1024 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        const res = await scanQRImage(manipulated.uri);
+        router.push({ pathname: '/results', params: { data: JSON.stringify(res) } });
+      } else {
+        resetScanner();
+      }
+    } catch (err: any) {
+      setScanState('error');
+      setHint('❌ ' + (err?.message ?? 'Gallery upload failed'));
+      setTimeout(resetScanner, 3000);
+    }
     isProcessing.current = false;
   };
 
@@ -152,8 +188,8 @@ export default function ScannerScreen() {
             {hint}
           </Text>
           <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={resetScanner}>
-              <Text style={styles.cancelBtnText}>✕ Reset</Text>
+            <TouchableOpacity style={styles.cancelBtn} onPress={handleGallery}>
+              <Text style={styles.cancelBtnText}>🖼️ Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.shutter, scanState === 'found' && styles.shutterReady, scanState === 'uploading' && styles.shutterDisabled]}
@@ -162,8 +198,8 @@ export default function ScannerScreen() {
             >
               {scanState === 'uploading' ? <ActivityIndicator color={Colors.accent} size="small" /> : <View style={styles.shutterInner} />}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push('/history')}>
-              <Text style={styles.cancelBtnText}>📋 Scans</Text>
+            <TouchableOpacity style={styles.cancelBtn} onPress={resetScanner}>
+              <Text style={styles.cancelBtnText}>✕ Reset</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
