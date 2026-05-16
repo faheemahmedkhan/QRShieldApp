@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "QRShield",
+    "slug": "qrshield",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "qrshield",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "backgroundColor": "#060a12",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#060a12"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.qrshield.pro",
+      "infoPlist": {
+        "NSCameraUsageDescription": "QRShield needs camera access to scan QR codes for threat analysis.",
+        "NSPhotoLibraryUsageDescription": "QRShield needs photo access to analyze QR codes from your library."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#060a12"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ],
+      "package": "com.qrshield.pro",
+      "versionCode": 1,
+      "blockedPermissions": []
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "QRShield needs camera access to scan QR codes for threat analysis."
+        }
+      ],
+      [
+        "expo-system-ui",
+        {
+          "userInterfaceStyle": "dark"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
