@@ -15,11 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.qrshield.pro",
-      "infoPlist": {
-        "NSCameraUsageDescription": "QRShield needs camera access to scan QR codes for threat analysis.",
-        "NSPhotoLibraryUsageDescription": "QRShield needs photo access to analyze QR codes from your library."
-      }
+      "bundleIdentifier": "com.qrshield.pro"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,13 +24,10 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.INTERNET",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.INTERNET"
       ],
       "package": "com.qrshield.pro",
-      "versionCode": 1,
-      "blockedPermissions": []
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -48,24 +41,10 @@
         {
           "cameraPermission": "QRShield needs camera access to scan QR codes for threat analysis."
         }
-      ],
-      [
-        "expo-system-ui",
-        {
-          "userInterfaceStyle": "dark"
-        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "router": {
-        "origin": false
-      },
-      "eas": {
-        "projectId": "2f4a43d8-2ea4-4acf-bbc1-8df961328bc9"
-      }
     }
   }
 }
