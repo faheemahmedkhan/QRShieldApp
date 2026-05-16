@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "qrshield",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "backgroundColor": "#060a12",
     "splash": {
       "image": "./assets/splash.png",
