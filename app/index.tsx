@@ -1,34 +1,20 @@
-// app/index.tsx — Live Camera QR Scanner Screen
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Dimensions
-} from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
-import * as Haptics from 'expo-haptics';
+// app/index.tsx — Landing Page / Home Screen
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, FontFamily, Radius } from '../constants/theme';
 import Header from '../components/Header';
-import ScanFrame from '../components/ScanFrame';
 import { scanQRImage } from '../services/api';
 
-const { width, height } = Dimensions.get('window');
-const FRAME_SIZE = width * 0.72;
-type ScanState = 'idle' | 'found' | 'uploading' | 'error';
-
-export default function ScannerScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanState, setScanState] = useState<ScanState>('idle');
-  const [hint, setHint] = useState('Point camera at a QR code');
-  const [isOnline, setIsOnline] = useState(true);
-  const cameraRef = useRef<CameraView>(null);
+export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const isProcessing = useRef(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetch('https://qrshield-backend-3.onrender.com/recent-scans')
@@ -36,58 +22,10 @@ export default function ScannerScreen() {
       .catch(() => setIsOnline(false));
   }, []);
 
-  const handleBarcodeScanned = useCallback(({ data }: { data: string }) => {
-    if (isProcessing.current || scanState !== 'idle') return;
-    setScanState('found');
-    setHint('✅ QR detected — tap Capture!');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [scanState]);
-
-  const handleCapture = async () => {
-    if (isProcessing.current || !cameraRef.current) return;
-    isProcessing.current = true;
-
-    try {
-      setScanState('uploading');
-      setHint('⬆ Uploading to AI server…');
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      // Small delay ensures camera is stable and ready
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
-      // Lower quality and skipProcessing fixes the "Failed to capture" out-of-memory error on some Androids
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
-      if (!photo?.uri) throw new Error('Failed to capture photo');
-
-      const manipulated = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 1024, height: 1024 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      const result = await scanQRImage(manipulated.uri);
-      router.push({ pathname: '/results', params: { data: JSON.stringify(result) } });
-    } catch (err: any) {
-      setScanState('error');
-      setHint('❌ ' + (err?.message ?? 'Upload failed'));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setTimeout(() => { setScanState('idle'); setHint('Point camera at a QR code'); isProcessing.current = false; }, 3000);
-      return;
-    }
-    isProcessing.current = false;
-  };
-
-  const resetScanner = () => {
-    if (isProcessing.current) return;
-    setScanState('idle');
-    setHint('Point camera at a QR code');
-    isProcessing.current = false;
-  };
-
   const handleGallery = async () => {
-    if (isProcessing.current) return;
+    if (isUploading) return;
     try {
-      isProcessing.current = true;
+      setIsUploading(true);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -95,8 +33,6 @@ export default function ScannerScreen() {
       });
       
       if (!result.canceled && result.assets && result.assets[0].uri) {
-        setScanState('uploading');
-        setHint('⬆ Uploading from gallery…');
         const manipulated = await ImageManipulator.manipulateAsync(
           result.assets[0].uri,
           [{ resize: { width: 1024, height: 1024 } }],
@@ -104,136 +40,98 @@ export default function ScannerScreen() {
         );
         const res = await scanQRImage(manipulated.uri);
         router.push({ pathname: '/results', params: { data: JSON.stringify(res) } });
-      } else {
-        resetScanner();
       }
     } catch (err: any) {
-      setScanState('error');
-      setHint('❌ ' + (err?.message ?? 'Gallery upload failed'));
-      setTimeout(resetScanner, 3000);
+      alert(err?.message ?? 'Gallery upload failed');
+    } finally {
+      setIsUploading(false);
     }
-    isProcessing.current = false;
   };
-
-  if (!permission) {
-    return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <Header isOnline={isOnline} />
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <Header isOnline={isOnline} />
-        <View style={styles.center}>
-          <Text style={styles.permTitle}>Camera Access Required</Text>
-          <Text style={styles.permSub}>QRShield needs your camera to scan QR codes for threat analysis.</Text>
-          <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
-            <Text style={styles.permBtnText}>Grant Camera Permission</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <Header isOnline={isOnline} />
-      <View style={styles.cameraContainer}>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFillObject}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-          onBarcodeScanned={scanState === 'idle' || scanState === 'found' ? handleBarcodeScanned : undefined}
-        />
-
-        {/* Dim overlay + frame */}
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          <View style={styles.dimTop} />
-          <View style={styles.dimRow}>
-            <View style={styles.dimSide} />
-            <ScanFrame state={scanState === 'uploading' ? 'uploading' : scanState === 'found' ? 'found' : 'scanning'} />
-            <View style={styles.dimSide} />
+      
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
+        
+        {/* Hero Section */}
+        <LinearGradient
+          colors={['rgba(61,132,255,0.1)', 'rgba(10,16,28,0.88)', 'rgba(0,245,160,0.07)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroEyebrowRow}>
+            <View style={styles.eyebrowDot} />
+            <Text style={styles.heroEyebrow}>SECURITY DASHBOARD</Text>
           </View>
-          <View style={styles.dimBottom} />
-        </View>
-
-        {/* Top bar */}
-        <View style={[styles.camTopBar, { top: 12 }]}>
-          <View style={styles.liveDot} />
-          <Text style={styles.camTitle}>QRShield</Text>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.camNavBtn} onPress={() => router.push('/history')}>
-            <Text style={styles.camNavBtnText}>History</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.camNavBtn} onPress={() => router.push('/about')}>
-            <Text style={styles.camNavBtnText}>About</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Guide label */}
-        <View style={styles.guideLabelWrap} pointerEvents="none">
-          <Text style={[styles.guideLabel, scanState === 'found' && { color: '#00ff88' }, scanState === 'uploading' && { color: Colors.accent }]}>
-            Align QR code inside the frame
+          <Text style={styles.heroTitle}>Professional QR threat analysis with transparent AI insight</Text>
+          <Text style={styles.heroDesc}>
+            Scan QR codes, inspect shortened links, and review ML, DL, and SHAP results in a clean, executive-style interface.
           </Text>
-        </View>
-
-        {/* Bottom bar */}
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.bottomBar}>
-          <Text style={[styles.hint, scanState === 'found' && { color: '#00ff88' }, scanState === 'uploading' && { color: Colors.accent }, scanState === 'error' && { color: Colors.danger }]}>
-            {hint}
-          </Text>
-          <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleGallery}>
-              <Text style={styles.cancelBtnText}>🖼️ Gallery</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.shutter, scanState === 'found' && styles.shutterReady, scanState === 'uploading' && styles.shutterDisabled]}
-              onPress={handleCapture}
-              disabled={scanState === 'uploading'}
-            >
-              {scanState === 'uploading' ? <ActivityIndicator color={Colors.accent} size="small" /> : <View style={styles.shutterInner} />}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={resetScanner}>
-              <Text style={styles.cancelBtnText}>✕ Reset</Text>
-            </TouchableOpacity>
-          </View>
         </LinearGradient>
-      </View>
+
+        <Text style={styles.sectionLabel}>INPUT METHODS</Text>
+
+        {/* Input Cards */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Live Detection</Text>
+          <Text style={styles.cardDesc}>Use your device camera to scan and auto-crop QR codes in real-time.</Text>
+          <TouchableOpacity style={styles.btnPrimary} onPress={() => router.push('/scanner')} disabled={isUploading}>
+            <Text style={styles.btnPrimaryText}>📷 Use Camera</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Image File</Text>
+          <Text style={styles.cardDesc}>Select a screenshot or image from your gallery to analyze.</Text>
+          <TouchableOpacity style={styles.btnSecondary} onPress={handleGallery} disabled={isUploading}>
+            {isUploading ? <ActivityIndicator color={Colors.accent2} size="small" /> : <Text style={styles.btnSecondaryText}>🖼️ Upload Image File…</Text>}
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>DASHBOARD</Text>
+
+        <View style={styles.cardRow}>
+          <TouchableOpacity style={[styles.card, styles.halfCard]} onPress={() => router.push('/history')}>
+            <Text style={styles.cardTitle}>History</Text>
+            <Text style={styles.cardDesc}>View recent scans.</Text>
+            <View style={styles.chip}><Text style={styles.chipText}>View ↗</Text></View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.card, styles.halfCard]} onPress={() => router.push('/about')}>
+            <Text style={styles.cardTitle}>About</Text>
+            <Text style={styles.cardDesc}>AI intelligence info.</Text>
+            <View style={styles.chip}><Text style={styles.chipText}>View ↗</Text></View>
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.footer}>© 2026 QRShield Pro Threat Intelligence.</Text>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 20 },
-  permTitle: { fontFamily: FontFamily.heading, fontSize: 22, color: Colors.text, textAlign: 'center' },
-  permSub: { fontFamily: FontFamily.sans, fontSize: 15, color: Colors.muted2, textAlign: 'center', lineHeight: 22 },
-  permBtn: { backgroundColor: Colors.accent, borderRadius: Radius.md, paddingHorizontal: 28, paddingVertical: 14, marginTop: 12 },
-  permBtnText: { fontFamily: FontFamily.sansBold, fontSize: 15, color: '#fff' },
-  cameraContainer: { flex: 1, position: 'relative', overflow: 'hidden' },
-  dimTop: { height: (height - FRAME_SIZE) / 2 - 40, backgroundColor: 'rgba(0,0,0,0.52)' },
-  dimRow: { flexDirection: 'row', height: FRAME_SIZE },
-  dimSide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)' },
-  dimBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)' },
-  camTopBar: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, gap: 10, zIndex: 10 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#ff3b3b' },
-  camTitle: { fontFamily: FontFamily.heading, fontSize: 16, color: Colors.accent, letterSpacing: 0.5 },
-  camNavBtn: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  camNavBtnText: { fontFamily: FontFamily.sansSemiBold, fontSize: 12, color: '#fff' },
-  guideLabelWrap: { position: 'absolute', left: 0, right: 0, top: (height - FRAME_SIZE) / 2 - 76, alignItems: 'center', zIndex: 10 },
-  guideLabel: { fontFamily: FontFamily.sansSemiBold, fontSize: 13, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.4 },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 48, paddingTop: 20, paddingHorizontal: 24, alignItems: 'center', gap: 16, zIndex: 10 },
-  hint: { fontFamily: FontFamily.sansSemiBold, fontSize: 14, color: '#fff', textAlign: 'center' },
-  btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, width: '100%' },
-  cancelBtn: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', borderRadius: Radius.full, paddingHorizontal: 22, paddingVertical: 10 },
-  cancelBtnText: { fontFamily: FontFamily.sansSemiBold, fontSize: 13, color: '#fff' },
-  shutter: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#fff', borderWidth: 5, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
-  shutterReady: { borderColor: '#00ff88' },
-  shutterDisabled: { opacity: 0.5 },
-  shutterInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#fff', borderWidth: 3, borderColor: '#333' },
+  content: { paddingHorizontal: 16, paddingTop: 8, gap: 12 },
+  hero: { borderRadius: Radius.xl, borderWidth: 1, borderColor: 'rgba(61,132,255,0.2)', padding: 28, overflow: 'hidden', marginBottom: 8 },
+  heroEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  eyebrowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent2, shadowColor: Colors.accent2, shadowOpacity: 0.8, shadowRadius: 8 },
+  heroEyebrow: { fontFamily: FontFamily.sansBold, fontSize: 10, color: Colors.accent2, letterSpacing: 2.5 },
+  heroTitle: { fontFamily: FontFamily.heading, fontSize: 28, color: '#eaf2ff', lineHeight: 34, marginBottom: 14, letterSpacing: -0.5 },
+  heroDesc: { fontFamily: FontFamily.sans, fontSize: 14, color: Colors.muted2, lineHeight: 22 },
+  sectionLabel: { fontFamily: FontFamily.sansBold, fontSize: 10, color: Colors.accent2, letterSpacing: 2, marginTop: 12, marginBottom: 4, marginLeft: 2 },
+  card: { backgroundColor: Colors.cardBg, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 20 },
+  cardTitle: { fontFamily: FontFamily.sansBold, fontSize: 16, color: Colors.text, marginBottom: 6 },
+  cardDesc: { fontFamily: FontFamily.sans, fontSize: 13, color: Colors.muted, lineHeight: 20, marginBottom: 16 },
+  btnPrimary: { backgroundColor: Colors.accent, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  btnPrimaryText: { fontFamily: FontFamily.sansBold, fontSize: 14, color: '#fff' },
+  btnSecondary: { backgroundColor: 'rgba(16,26,44,0.9)', borderWidth: 1, borderColor: 'rgba(61,132,255,0.25)', borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  btnSecondaryText: { fontFamily: FontFamily.sansBold, fontSize: 14, color: Colors.text },
+  cardRow: { flexDirection: 'row', gap: 12 },
+  halfCard: { flex: 1, marginBottom: 0 },
+  chip: { alignSelf: 'flex-start', backgroundColor: 'rgba(61,132,255,0.1)', borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border2 },
+  chipText: { fontFamily: FontFamily.sansSemiBold, fontSize: 12, color: Colors.accent2 },
+  footer: { fontFamily: FontFamily.sans, fontSize: 11, color: Colors.muted, textAlign: 'center', marginTop: 24 },
 });

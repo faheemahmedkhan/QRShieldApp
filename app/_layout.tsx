@@ -39,6 +39,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="scanner" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="results" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="history" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
