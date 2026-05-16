@@ -1,7 +1,7 @@
 // components/Header.tsx
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
-import { Colors, FontFamily, Radius } from '@/constants/theme';
+import { Colors, FontFamily, Radius } from '../constants/theme';
 
 interface HeaderProps {
   isOnline?: boolean;
@@ -23,12 +23,10 @@ export default function Header({ isOnline = true }: HeaderProps) {
 
   return (
     <View style={styles.header}>
-      {/* Top gradient line */}
       <View style={styles.topLine} />
-
       <View style={styles.logoGroup}>
         <Image
-          source={require('@/assets/logo.png')}
+          source={require('../assets/logo.png')}
           style={styles.logoImg}
           resizeMode="contain"
         />
@@ -37,7 +35,6 @@ export default function Header({ isOnline = true }: HeaderProps) {
           <Text style={styles.logoSub}>ENTERPRISE THREAT INTELLIGENCE</Text>
         </View>
       </View>
-
       <View style={styles.badge}>
         <Animated.View style={[styles.dot, { opacity: pulse, backgroundColor: isOnline ? Colors.success : Colors.danger }]} />
         <Text style={styles.badgeText}>{isOnline ? 'AI ONLINE' : 'OFFLINE'}</Text>

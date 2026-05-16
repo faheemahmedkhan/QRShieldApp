@@ -1,7 +1,7 @@
 // components/StatusBadge.tsx
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { Colors, FontFamily, Radius, StatusType, getStatusColors } from '@/constants/theme';
+import { Colors, FontFamily, Radius, StatusType, getStatusColors } from '../constants/theme';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -31,37 +31,9 @@ export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
   const dotSize = size === 'lg' ? 12 : size === 'sm' ? 7 : 9;
 
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: theme.bg,
-          borderColor: theme.border,
-          paddingHorizontal: padH,
-          paddingVertical: padV,
-        },
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.dot,
-          {
-            backgroundColor: theme.color,
-            width: dotSize,
-            height: dotSize,
-            borderRadius: dotSize / 2,
-            opacity: status === 'MALICIOUS' ? pulse : 1,
-            shadowColor: theme.color,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.8,
-            shadowRadius: 6,
-            elevation: 4,
-          },
-        ]}
-      />
-      <Text style={[styles.label, { color: theme.color, fontSize: textSize }]}>
-        {theme.label}
-      </Text>
+    <View style={[styles.badge, { backgroundColor: theme.bg, borderColor: theme.border, paddingHorizontal: padH, paddingVertical: padV }]}>
+      <Animated.View style={[styles.dot, { backgroundColor: theme.color, width: dotSize, height: dotSize, borderRadius: dotSize / 2, opacity: status === 'MALICIOUS' ? pulse : 1 }]} />
+      <Text style={[styles.label, { color: theme.color, fontSize: textSize }]}>{theme.label}</Text>
     </View>
   );
 }
